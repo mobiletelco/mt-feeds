@@ -20,7 +20,7 @@ jobs:
         run: |
           git config user.name 'mt-feeds-bot'
           git config user.email 'bot@mobiletelco.in'
-          git add gadgets360-hindi.xml
+          git add gadgets360-hindi.xml g360-state.json
           if git diff --cached --quiet; then
             echo 'no change'
           else

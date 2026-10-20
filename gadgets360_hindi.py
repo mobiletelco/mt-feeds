@@ -4,6 +4,8 @@
 The site blocks plain datacenter requests (Akamai 403); curl_cffi with a
 Chrome TLS fingerprint gets through. Output: gadgets360-hindi.xml at repo root.
 """
+import json
+import os
 import re
 import sys
 from datetime import datetime, timezone, timedelta
@@ -14,6 +16,7 @@ from curl_cffi import requests as creq
 
 URL = 'https://hindi.gadgets360.com/news'
 OUT = 'gadgets360-hindi.xml'
+STATE = 'g360-state.json'
 IST = timezone(timedelta(hours=5, minutes=30))
 
 HI_MONTHS = {
@@ -80,6 +83,25 @@ def main():
         sys.exit(1)
 
     now = datetime.now(IST)
+    now_s = now.isoformat()
+
+    state = {}
+    if os.path.exists(STATE):
+        try:
+            state = json.load(open(STATE))
+        except Exception:
+            state = {}
+    # first-seen wins; backdate brand-new items stamped during this run
+    for it in items:
+        if it['link'] not in state:
+            state[it['link']] = now_s
+        it['first_seen'] = state[it['link']]
+    # prune urls no longer in the feed window
+    live = {it['link'] for it in items}
+    state = {u: t for u, t in state.items() if u in live}
+    with open(STATE, 'w', encoding='utf-8') as f:
+        json.dump(state, f, ensure_ascii=False, indent=0)
+
     def fmt(dt):
         return dt.strftime('%a, %d %b %Y %H:%M:%S +0530')
 
@@ -94,7 +116,10 @@ def main():
         f'<lastBuildDate>{fmt(now)}</lastBuildDate>',
     ]
     for it in items[:30]:
-        pub = it['pub'] or now
+        try:
+            pub = datetime.fromisoformat(it['first_seen'])
+        except Exception:
+            pub = now
         parts.append('<item>')
         parts.append(f"<title>{escape(it['title'])}</title>")
         parts.append(f"<link>{escape(it['link'])}</link>")
