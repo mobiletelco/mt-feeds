@@ -1,0 +1,29 @@
+name: Gadgets360 Hindi feed
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: pip install curl_cffi beautifulsoup4 lxml --quiet
+      - name: Build feed
+        run: python3 gadgets360_hindi.py
+      - name: Commit feed if changed
+        run: |
+          git config user.name 'mt-feeds-bot'
+          git config user.email 'bot@mobiletelco.in'
+          git add gadgets360-hindi.xml
+          if git diff --cached --quiet; then
+            echo 'no change'
+          else
+            git commit -m 'feed: gadgets360 hindi update'
+            git push
+          fi
